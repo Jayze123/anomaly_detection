@@ -73,6 +73,7 @@ def run_pipeline(cfg: dict) -> dict:
             label_set=label_sets.get(category, []),
             unknown_label=unknown_label,
             roi_note="NEEDED FROM USER: ROI selection not implemented.",
+            image=image,
         )
 
         risk_score, risk_class = lookup_risk(
@@ -112,4 +113,3 @@ def run_pipeline(cfg: dict) -> dict:
         )
 
     return {"results": results}
-

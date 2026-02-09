@@ -5,3 +5,8 @@ scikit-image
 fastapi
 uvicorn
 python-multipart
+transformers
+accelerate
+torch
+sentencepiece
+watchdog
