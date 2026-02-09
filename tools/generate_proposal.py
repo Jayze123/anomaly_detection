@@ -25,7 +25,7 @@ def main() -> int:
         "inspection pipeline with interpretable semantics and safety-aligned risk scoring. "
         "The system targets MVTec AD categories (bottle, cable, wood, tile, leather) and outputs "
         "anomaly detection, localization, defect labels, evidence, risk class, and action "
-        "recommendations. The work combines state-of-the-art anomaly detection baselines with "
+        "recommendations. The work combines established anomaly detection baselines with "
         "a vision-language model for defect semantics and deterministic risk rules."
     )
 
@@ -36,7 +36,7 @@ def main() -> int:
         "a realistic benchmark with pixel-precise annotations for industrial anomalies "
         "(Bergmann et al., 2019; Bergmann et al., 2021). Recent methods such as PatchCore "
         "and PaDiM demonstrate strong performance for detection and localization in this setting "
-        "(Roth et al., 2021; Defard et al., 2020)."
+        "(Roth et al., 2022; Defard et al., 2020)."
     )
 
     doc.add_heading("2. Aims and Objectives", level=1)
@@ -70,15 +70,16 @@ def main() -> int:
     doc.add_paragraph(
         "Implement PatchCore and PaDiM as strong baselines for detection and localization. "
         "PatchCore uses a memory bank of nominal patch features for outlier scoring, while PaDiM "
-        "models patch embeddings with multivariate Gaussians (Roth et al., 2021; Defard et al., 2020)."
+        "models patch embeddings with multivariate Gaussians (Roth et al., 2022; Defard et al., 2020)."
     )
 
     doc.add_paragraph("4.3 Semantics via VLM")
     doc.add_paragraph(
         "Integrate LLaVA for constrained defect labeling. LLaVA is a multimodal model created via "
         "visual instruction tuning, providing strong image-language reasoning (Liu et al., 2023). "
-        "The LLaVA-1.6 release improves visual reasoning and OCR, supporting detailed defect evidence "
-        "when constrained to fixed label sets (Liu et al., 2024)."
+        "The LLaVA-1.6 (Mistral) release improves visual reasoning and supports higher-resolution "
+        "inputs, which is useful for defect evidence extraction when constrained to fixed label sets "
+        "(Liu et al., 2024)."
     )
 
     doc.add_paragraph("4.4 Risk Scoring and Actions")
@@ -136,29 +137,37 @@ def main() -> int:
     doc.add_paragraph(
         "Bergmann, P., Fauser, M., Sattlegger, D. and Steger, C. (2019) "
         "MVTec AD — A Comprehensive Real-World Dataset for Unsupervised Anomaly Detection. "
-        "Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition."
+        "Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. "
+        "doi:10.1109/CVPR.2019.00982."
     )
     doc.add_paragraph(
         "Bergmann, P., Batzner, K., Fauser, M., Sattlegger, D. and Steger, C. (2021) "
         "The MVTec Anomaly Detection Dataset: A Comprehensive Real-World Dataset for Unsupervised "
-        "Anomaly Detection. International Journal of Computer Vision."
+        "Anomaly Detection. International Journal of Computer Vision, 129(4), pp.1038–1059. "
+        "doi:10.1007/s11263-020-01400-4."
     )
     doc.add_paragraph(
         "Defard, T., Setkov, A., Loesch, A. and Audigier, R. (2020) "
         "PaDiM: a Patch Distribution Modeling Framework for Anomaly Detection and Localization. "
-        "arXiv preprint arXiv:2011.08785."
+        "arXiv:2011.08785. doi:10.48550/arXiv.2011.08785."
     )
     doc.add_paragraph(
-        "Roth, K., Pemula, L., Zepeda, J., Schölkopf, B., Brox, T. and Gehler, P. (2021) "
-        "Towards Total Recall in Industrial Anomaly Detection. arXiv preprint arXiv:2106.08265."
+        "Roth, K., Pemula, L., Zepeda, J., Schölkopf, B., Brox, T. and Gehler, P. (2022) "
+        "Towards Total Recall in Industrial Anomaly Detection. arXiv:2106.08265. "
+        "doi:10.48550/arXiv.2106.08265."
     )
     doc.add_paragraph(
         "Liu, H., Li, C., Wu, Q. and Lee, Y.J. (2023) Visual Instruction Tuning. "
-        "arXiv preprint arXiv:2304.08485."
+        "arXiv:2304.08485. doi:10.48550/arXiv.2304.08485."
     )
     doc.add_paragraph(
         "Liu, H., Li, C., Li, Y., Li, B., Zhang, Y., Shen, S. and Lee, Y.J. (2024) "
-        "LLaVA-1.6: Improved reasoning, OCR, and world knowledge (blog release)."
+        "LLaVA-1.6 (Mistral) model card. Hugging Face. Available at: "
+        "https://huggingface.co/llava-hf/llava-v1.6-mistral-7b-hf (Accessed: 9 February 2026)."
+    )
+    doc.add_paragraph(
+        "MVTec Software (n.d.) MVTec AD dataset page. Available at: "
+        "https://www.mvtec.com/company/research/datasets/mvtec-ad (Accessed: 9 February 2026)."
     )
 
     doc.save(str(out_path))
