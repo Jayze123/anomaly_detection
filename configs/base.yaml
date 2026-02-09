@@ -1,0 +1,44 @@
+data:
+  root: data
+  category: bottle
+
+paths:
+  artifacts: artifacts
+  outputs: outputs
+  results_json: results.json
+
+postproc:
+  heatmap_normalize: minmax
+  threshold_method: percentile
+  threshold_value: 0.5
+  threshold_percentile: 99.5
+  min_area: 20
+  image_threshold: 0.5
+
+labels:
+  labels:
+    bottle: [broken_large, broken_small, contamination]
+    cable: [cut, missing_wire, poke_insulation]
+    wood: [hole, scratch, stain]
+    tile: [crack, glue_strip, rough]
+    leather: [cut, fold, glue]
+  unknown_label: "Unknown"
+
+risk:
+  rpm:
+    - severity: 1
+      occurrence: 1
+      detection: 1
+      risk_score: 1
+      risk_class: Low
+  risk_to_action:
+    Low: "Continue"
+    Medium: "Rework"
+    High: "Quarantine"
+  severity: null
+  occurrence: null
+  detection: null
+
+uncertainty:
+  combine_method: min
+  review_threshold: 0.7
