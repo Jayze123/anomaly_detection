@@ -231,16 +231,15 @@ async def admin_login_form():
 
 
 @app.post("/admin/login")
-async def admin_login(email: str = Form(...), password: str = Form(...)):
+async def admin_login(request: Request, email: str = Form(...), password: str = Form(...)):
     user = fetch_user_by_email(email)
     if not user or not verify_password(password, user["password_hash"]):
         return HTMLResponse(
             "<p>Invalid credentials. <a href='/admin/login'>Try again</a></p>",
             status_code=401,
         )
-    response = RedirectResponse(url="/admin", status_code=302)
-    response.set_cookie("session", response.headers.get("set-cookie", ""))
-    return response
+    request.session["admin_user"] = user["email"]
+    return RedirectResponse(url="/admin", status_code=302)
 
 
 @app.get("/admin/logout")
@@ -271,6 +270,7 @@ async def admin_ui(request: Request):
       <body>
         <div class="panel">
           <h2>Admin: Anomaly Detection</h2>
+          <p><a href="/admin/logout">Logout</a></p>
           <form action="/analyze" method="post" enctype="multipart/form-data">
             <label>Category</label>
             <select name="category">{options}</select>
