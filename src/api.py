@@ -5,8 +5,9 @@ import time
 from pathlib import Path
 
 import numpy as np
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from starlette.middleware.sessions import SessionMiddleware
 from PIL import Image
 
 from src.config import load_yaml
@@ -15,6 +16,8 @@ from src.models.mean_diff import MeanDiffModel
 from src.postproc.heatmap import normalize_heatmap
 from src.postproc.mask import threshold_heatmap
 from src.postproc.bboxes import mask_to_bboxes
+from src.db import fetch_user_by_email
+from src.auth import verify_password, get_session_secret
 
 
 APP_CONFIG_PATH = os.environ.get("ANOMALY_CONFIG", "configs/base.yaml")
@@ -40,6 +43,7 @@ def _safe_name(name: str) -> str:
 
 
 app = FastAPI(title="Anomaly Inspection API", version="0.1.0")
+app.add_middleware(SessionMiddleware, secret_key=get_session_secret())
 
 
 def _save_uint8(path: Path, arr: np.ndarray) -> None:
@@ -191,8 +195,64 @@ async def user_ui():
     return HTMLResponse(content=html)
 
 
+def _require_admin(request: Request) -> bool:
+    return bool(request.session.get("admin_user"))
+
+
+@app.get("/admin/login", response_class=HTMLResponse)
+async def admin_login_form():
+    html = """
+    <html>
+      <head>
+        <title>Admin Login</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 40px; }
+          .panel { max-width: 420px; }
+          label { display:block; margin-top: 12px; }
+          input { width: 100%; padding: 8px; }
+          button { margin-top: 16px; padding: 10px 16px; }
+        </style>
+      </head>
+      <body>
+        <div class="panel">
+          <h2>Admin Login</h2>
+          <form action="/admin/login" method="post">
+            <label>Email</label>
+            <input type="email" name="email" required />
+            <label>Password</label>
+            <input type="password" name="password" required />
+            <button type="submit">Login</button>
+          </form>
+        </div>
+      </body>
+    </html>
+    """
+    return HTMLResponse(content=html)
+
+
+@app.post("/admin/login")
+async def admin_login(email: str = Form(...), password: str = Form(...)):
+    user = fetch_user_by_email(email)
+    if not user or not verify_password(password, user["password_hash"]):
+        return HTMLResponse(
+            "<p>Invalid credentials. <a href='/admin/login'>Try again</a></p>",
+            status_code=401,
+        )
+    response = RedirectResponse(url="/admin", status_code=302)
+    response.set_cookie("session", response.headers.get("set-cookie", ""))
+    return response
+
+
+@app.get("/admin/logout")
+async def admin_logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/admin/login", status_code=302)
+
+
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_ui():
+async def admin_ui(request: Request):
+    if not _require_admin(request):
+        return RedirectResponse(url="/admin/login", status_code=302)
     label_sets = _load_label_sets()
     options = "\n".join([f"<option value='{c}'>{c}</option>" for c in sorted(label_sets.keys())])
     html = f"""
