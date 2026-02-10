@@ -10,3 +10,6 @@ accelerate
 torch
 sentencepiece
 watchdog
+psycopg2-binary
+passlib[bcrypt]
+itsdangerous
