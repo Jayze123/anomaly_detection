@@ -16,6 +16,23 @@ function Test-PortListening {
   return $null -ne $conn
 }
 
+function Get-PortOwners {
+  param([int]$Port)
+  $conns = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
+  if (-not $conns) { return @() }
+  $pids = $conns | Select-Object -ExpandProperty OwningProcess -Unique
+  $owners = @()
+  foreach ($pid in $pids) {
+    $p = Get-CimInstance Win32_Process -Filter "ProcessId=$pid" -ErrorAction SilentlyContinue
+    if ($p) {
+      $owners += "$($p.Name) (PID $pid)"
+    } else {
+      $owners += "PID $pid"
+    }
+  }
+  return $owners
+}
+
 function Test-ProcessCommandContains {
   param([string]$Needle)
   $procs = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
@@ -33,23 +50,41 @@ if ($indexDir) {
 
   python -m pip install -e .
 
-  if ((-not (Test-PortListening -Port 8080)) -and (-not (Test-ProcessCommandContains "python -m app.main"))) {
+  if (-not (Test-ProcessCommandContains "python -m app.main")) {
     Start-Process -FilePath powershell -ArgumentList @(
       "-NoProfile",
       "-ExecutionPolicy", "Bypass",
       "-Command", "cd `"$indexDir`"; python -m app.main"
     )
+    Start-Sleep -Seconds 2
+    if (-not (Test-ProcessCommandContains "python -m app.main")) {
+      $owners = Get-PortOwners -Port 8080
+      if ($owners.Count -gt 0) {
+        Write-Host "Warning: app service did not start. Port 8080 is in use by: $($owners -join ', ')"
+      } else {
+        Write-Host "Warning: app service did not start. Check startup logs in the new PowerShell window."
+      }
+    }
   }
 } else {
   Set-Location $repoRoot
   python -m pip install -r requirements.txt
 
-  if ((-not (Test-PortListening -Port 8000)) -and (-not (Test-ProcessCommandContains "python -m uvicorn src.api:app --reload"))) {
+  if (-not (Test-ProcessCommandContains "python -m uvicorn src.api:app --reload")) {
     Start-Process -FilePath powershell -ArgumentList @(
       "-NoProfile",
       "-ExecutionPolicy", "Bypass",
       "-Command", "cd `"$repoRoot`"; python -m uvicorn src.api:app --reload"
     )
+    Start-Sleep -Seconds 2
+    if (-not (Test-ProcessCommandContains "python -m uvicorn src.api:app --reload")) {
+      $owners = Get-PortOwners -Port 8000
+      if ($owners.Count -gt 0) {
+        Write-Host "Warning: fallback service did not start. Port 8000 is in use by: $($owners -join ', ')"
+      } else {
+        Write-Host "Warning: fallback service did not start. Check startup logs in the new PowerShell window."
+      }
+    }
   }
 }
 
