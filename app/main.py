@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from nicegui import ui
 from starlette.exceptions import HTTPException as StarletteHTTPException
+import uvicorn
 
 from app.api import admin, auth, user
 from app.api.deps import api_response
@@ -58,4 +59,5 @@ register_ui(api_app)
 
 
 if __name__ in {"__main__", "app.main"}:
-    ui.run_with(api_app, storage_secret=settings.jwt_secret, title="Anomaly Inspection", port=8080)
+    ui.run_with(api_app, storage_secret=settings.jwt_secret, title="Anomaly Inspection")
+    uvicorn.run(api_app, host="0.0.0.0", port=8080)
