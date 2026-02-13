@@ -56,3 +56,32 @@ def fetch_user_by_email(email: str) -> Optional[dict]:
             }
     finally:
         conn.close()
+
+
+def fetch_user_by_email_and_password(email: str, password: str) -> Optional[dict]:
+    """
+    Verifies password using PostgreSQL pgcrypto's crypt() to avoid Python bcrypt backend issues.
+    Requires: CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    """
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, email, username
+                FROM users
+                WHERE email = %s
+                  AND password_hash = crypt(%s, password_hash)
+                """,
+                (email, password),
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            return {
+                "id": row[0],
+                "email": row[1],
+                "username": row[2],
+            }
+    finally:
+        conn.close()
