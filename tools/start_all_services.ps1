@@ -22,12 +22,12 @@ function Get-PortOwners {
   if (-not $conns) { return @() }
   $pids = $conns | Select-Object -ExpandProperty OwningProcess -Unique
   $owners = @()
-  foreach ($pid in $pids) {
-    $p = Get-CimInstance Win32_Process -Filter "ProcessId=$pid" -ErrorAction SilentlyContinue
+  foreach ($procId in $pids) {
+    $p = Get-CimInstance Win32_Process -Filter "ProcessId=$procId" -ErrorAction SilentlyContinue
     if ($p) {
-      $owners += "$($p.Name) (PID $pid)"
+      $owners += "$($p.Name) (PID $procId)"
     } else {
-      $owners += "PID $pid"
+      $owners += "PID $procId"
     }
   }
   return $owners
