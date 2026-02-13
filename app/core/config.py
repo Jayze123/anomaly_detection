@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     roi: str | None = None
     trigger_threshold: float = 0.08
     debounce_ms: int = 150
+    app_port: int = 8080
 
     @field_validator("storage_root")
     @classmethod
