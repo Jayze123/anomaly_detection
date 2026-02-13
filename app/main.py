@@ -58,4 +58,4 @@ register_ui(api_app)
 
 
 if __name__ in {"__main__", "app.main"}:
-    ui.run_with(api_app, storage_secret=settings.jwt_secret, title="Anomaly Inspection", reload=False, port=8080)
+    ui.run_with(api_app, storage_secret=settings.jwt_secret, title="Anomaly Inspection", port=8080)
