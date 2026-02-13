@@ -16,6 +16,11 @@ from src.models.mean_diff import MeanDiffModel
 from src.postproc.heatmap import normalize_heatmap
 from src.postproc.mask import threshold_heatmap
 from src.postproc.bboxes import mask_to_bboxes
+from src.vlm.semantics import infer_defect_label
+from src.risk.rpm import lookup_risk_strict
+from src.risk.policy import action_from_risk
+from src.uncertainty.confidence import combine_confidence
+from src.uncertainty.rules import requires_human_review, is_ambiguous_score
 from src.db import fetch_user_by_email
 from src.auth import verify_password, get_session_secret
 
@@ -80,6 +85,7 @@ def _analyze_image(image_path: str, category: str, cfg: dict) -> dict:
         percentile=cfg["postproc"]["threshold_percentile"],
     )
     bboxes = mask_to_bboxes(mask, min_area=cfg["postproc"]["min_area"])
+    mask_ratio = float(mask.mean())
 
     base = Path(image_path).stem
     heatmap_path = heatmap_dir / f"{base}_hm.png"
@@ -88,6 +94,46 @@ def _analyze_image(image_path: str, category: str, cfg: dict) -> dict:
     _save_uint8(mask_path, (mask * 255))
 
     image_decision = "anomalous" if score >= cfg["postproc"]["image_threshold"] else "normal"
+    label_sets = cfg["labels"]["labels"]
+    unknown_label = cfg["labels"]["unknown_label"]
+    vlm_result = infer_defect_label(
+        category=category,
+        label_set=label_sets.get(category, []),
+        unknown_label=unknown_label,
+        roi_note=f"ROI derived from anomaly mask; {len(bboxes)} connected region(s).",
+        image=image,
+        anomaly_score=float(score),
+        bbox_count=len(bboxes),
+        mask_ratio=mask_ratio,
+    )
+
+    defect_profiles = cfg["risk"].get("defect_profiles", {})
+    profile = defect_profiles.get(vlm_result.defect_label, {})
+    severity = profile.get("severity", cfg["risk"].get("severity"))
+    occurrence = profile.get("occurrence", cfg["risk"].get("occurrence"))
+    detection = profile.get("detection", cfg["risk"].get("detection"))
+    risk_score, risk_class = lookup_risk_strict(
+        cfg["risk"]["rpm"],
+        severity=severity,
+        occurrence=occurrence,
+        detection=detection,
+    )
+    action = action_from_risk(risk_class, cfg["risk"]["risk_to_action"])
+
+    anomaly_conf = float(min(1.0, score / cfg["postproc"]["image_threshold"])) if cfg["postproc"]["image_threshold"] > 0 else 0.0
+    confidence = combine_confidence(anomaly_conf, vlm_result.confidence, method=cfg["uncertainty"]["combine_method"])
+    human_review = requires_human_review(
+        confidence=confidence,
+        label=vlm_result.defect_label,
+        unknown_label=unknown_label,
+        threshold=cfg["uncertainty"]["review_threshold"],
+    )
+    if is_ambiguous_score(
+        score=float(score),
+        threshold=float(cfg["postproc"]["image_threshold"]),
+        margin=float(cfg["uncertainty"].get("ambiguity_margin", 0.05)),
+    ):
+        human_review = True
 
     return {
         "image_decision": image_decision,
@@ -95,6 +141,22 @@ def _analyze_image(image_path: str, category: str, cfg: dict) -> dict:
         "anomaly_heatmap_path": str(heatmap_path),
         "anomaly_mask_path": str(mask_path),
         "bboxes": bboxes,
+        "localization": {
+            "bbox_count": len(bboxes),
+            "mask_area_ratio": mask_ratio,
+        },
+        "defect_label": vlm_result.defect_label,
+        "evidence": vlm_result.evidence,
+        "risk_score": risk_score,
+        "risk_class": risk_class,
+        "action": action,
+        "confidence": confidence,
+        "human_review_required": human_review,
+        "rpm_inputs": {
+            "severity": severity,
+            "occurrence": occurrence,
+            "detection": detection,
+        },
     }
 
 

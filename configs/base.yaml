@@ -26,15 +26,104 @@ labels:
 
 risk:
   rpm:
-    - severity: 1
-      occurrence: 1
-      detection: 1
-      risk_score: 1
+    - severity: 2
+      occurrence: 2
+      detection: 2
+      risk_score: 8
       risk_class: Low
+    - severity: 3
+      occurrence: 2
+      detection: 2
+      risk_score: 12
+      risk_class: Medium
+    - severity: 3
+      occurrence: 3
+      detection: 3
+      risk_score: 27
+      risk_class: Medium
+    - severity: 4
+      occurrence: 3
+      detection: 3
+      risk_score: 36
+      risk_class: High
+    - severity: 4
+      occurrence: 4
+      detection: 3
+      risk_score: 48
+      risk_class: High
+    - severity: 5
+      occurrence: 4
+      detection: 4
+      risk_score: 80
+      risk_class: Critical
+    - severity: 5
+      occurrence: 5
+      detection: 4
+      risk_score: 100
+      risk_class: Critical
   risk_to_action:
-    Low: "Continue"
-    Medium: "Rework"
-    High: "Quarantine"
+    Low: "Continue and monitor"
+    Medium: "Rework and re-inspect"
+    High: "Quarantine lot and notify supervisor"
+    Critical: "Stop line and trigger CAPA escalation"
+    REVIEW_REQUIRED: "Hold for human review"
+  defect_profiles:
+    broken_small:
+      severity: 3
+      occurrence: 2
+      detection: 2
+    broken_large:
+      severity: 5
+      occurrence: 4
+      detection: 4
+    contamination:
+      severity: 4
+      occurrence: 3
+      detection: 3
+    cut:
+      severity: 4
+      occurrence: 3
+      detection: 3
+    missing_wire:
+      severity: 5
+      occurrence: 4
+      detection: 4
+    poke_insulation:
+      severity: 3
+      occurrence: 2
+      detection: 2
+    hole:
+      severity: 4
+      occurrence: 3
+      detection: 3
+    scratch:
+      severity: 3
+      occurrence: 2
+      detection: 2
+    stain:
+      severity: 2
+      occurrence: 2
+      detection: 2
+    crack:
+      severity: 5
+      occurrence: 4
+      detection: 4
+    glue_strip:
+      severity: 2
+      occurrence: 2
+      detection: 2
+    rough:
+      severity: 3
+      occurrence: 2
+      detection: 2
+    fold:
+      severity: 2
+      occurrence: 2
+      detection: 2
+    glue:
+      severity: 2
+      occurrence: 2
+      detection: 2
   severity: null
   occurrence: null
   detection: null
@@ -42,3 +131,4 @@ risk:
 uncertainty:
   combine_method: min
   review_threshold: 0.7
+  ambiguity_margin: 0.05

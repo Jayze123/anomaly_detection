@@ -12,10 +12,10 @@ from src.postproc.heatmap import normalize_heatmap
 from src.postproc.mask import threshold_heatmap
 from src.postproc.bboxes import mask_to_bboxes
 from src.vlm.semantics import infer_defect_label
-from src.risk.rpm import lookup_risk
+from src.risk.rpm import lookup_risk_strict
 from src.risk.policy import action_from_risk
 from src.uncertainty.confidence import combine_confidence
-from src.uncertainty.rules import requires_human_review
+from src.uncertainty.rules import is_ambiguous_score, requires_human_review
 
 
 def _save_uint8(path: str, arr: np.ndarray) -> None:
@@ -46,6 +46,7 @@ def run_pipeline(cfg: dict) -> dict:
     unknown_label = cfg["labels"]["unknown_label"]
     rpm_table = cfg["risk"]["rpm"]
     risk_to_action = cfg["risk"]["risk_to_action"]
+    defect_profiles = cfg["risk"].get("defect_profiles", {})
 
     results = []
     for sample in iter_mvtec_samples(data_root, category, "test"):
@@ -59,6 +60,7 @@ def run_pipeline(cfg: dict) -> dict:
             percentile=cfg["postproc"]["threshold_percentile"],
         )
         bboxes = mask_to_bboxes(mask, min_area=cfg["postproc"]["min_area"])
+        mask_ratio = float(mask.mean())
 
         base = os.path.splitext(os.path.basename(sample.image_path))[0]
         heatmap_path = os.path.join(heatmap_dir, f"{base}_hm.png")
@@ -72,15 +74,23 @@ def run_pipeline(cfg: dict) -> dict:
             category=category,
             label_set=label_sets.get(category, []),
             unknown_label=unknown_label,
-            roi_note="NEEDED FROM USER: ROI selection not implemented.",
+            roi_note=f"ROI derived from anomaly mask; {len(bboxes)} connected region(s).",
             image=image,
+            anomaly_score=float(score),
+            bbox_count=len(bboxes),
+            mask_ratio=mask_ratio,
         )
 
-        risk_score, risk_class = lookup_risk(
+        profile = defect_profiles.get(vlm_result.defect_label, {})
+        severity = profile.get("severity", cfg["risk"].get("severity"))
+        occurrence = profile.get("occurrence", cfg["risk"].get("occurrence"))
+        detection = profile.get("detection", cfg["risk"].get("detection"))
+
+        risk_score, risk_class = lookup_risk_strict(
             rpm_table,
-            severity=cfg["risk"].get("severity"),
-            occurrence=cfg["risk"].get("occurrence"),
-            detection=cfg["risk"].get("detection"),
+            severity=severity,
+            occurrence=occurrence,
+            detection=detection,
         )
         action = action_from_risk(risk_class, risk_to_action)
 
@@ -92,6 +102,12 @@ def run_pipeline(cfg: dict) -> dict:
             unknown_label=unknown_label,
             threshold=cfg["uncertainty"]["review_threshold"],
         )
+        if is_ambiguous_score(
+            score=float(score),
+            threshold=float(cfg["postproc"]["image_threshold"]),
+            margin=float(cfg["uncertainty"].get("ambiguity_margin", 0.05)),
+        ):
+            human_review = True
 
         results.append(
             {
@@ -102,6 +118,10 @@ def run_pipeline(cfg: dict) -> dict:
                 "anomaly_heatmap_path": heatmap_path,
                 "anomaly_mask_path": mask_path,
                 "bboxes": bboxes,
+                "localization": {
+                    "bbox_count": len(bboxes),
+                    "mask_area_ratio": mask_ratio,
+                },
                 "defect_label": vlm_result.defect_label,
                 "evidence": vlm_result.evidence,
                 "risk_score": risk_score,
@@ -109,6 +129,11 @@ def run_pipeline(cfg: dict) -> dict:
                 "action": action,
                 "confidence": confidence,
                 "human_review_required": human_review,
+                "rpm_inputs": {
+                    "severity": severity,
+                    "occurrence": occurrence,
+                    "detection": detection,
+                },
             }
         )
 
