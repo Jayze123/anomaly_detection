@@ -1,5 +1,8 @@
 
+*.egg-info/
 *.pyc
 .env
+.nicegui/
 .venv/
 __pycache__/
+data/status_images/

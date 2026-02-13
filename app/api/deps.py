@@ -9,7 +9,7 @@ from app.core.security import decode_token
 from app.db.models import RoleEnum, User
 from app.db.session import get_db
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
 def api_response(success: bool, message: str, data: Any = None) -> dict[str, Any]:

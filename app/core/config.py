@@ -8,12 +8,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/anomaly_inspection"
+    database_url: str = "postgresql+psycopg://postgres:Yange%40junior1@localhost:5432/anomaly_detection"
     jwt_secret: str = "change-me"
     jwt_algorithm: str = "HS256"
     jwt_expires_minutes: int = 120
 
-    storage_root: str = "/data"
+    storage_root: str = "./data"
 
     camera_index: int = 0
     roi: str | None = None

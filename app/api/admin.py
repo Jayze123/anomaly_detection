@@ -46,6 +46,11 @@ class StatusIn(BaseModel):
     status_description: Annotated[str, StringConstraints(max_length=2000)] | None = None
 
 
+class NormalReferenceIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    status_description: Annotated[str, StringConstraints(min_length=2, max_length=2000)]
+
+
 def _commit_or_raise(db: Session, integrity_message: str = "Database constraint violated") -> None:
     try:
         db.commit()
@@ -55,6 +60,31 @@ def _commit_or_raise(db: Session, integrity_message: str = "Database constraint 
     except SQLAlchemyError as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail="Database operation failed") from exc
+
+
+def _ensure_normal_status(db: Session, product_id: str) -> models.ProductStatus:
+    product = db.get(models.Product, product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    normal = db.scalar(
+        select(models.ProductStatus).where(
+            models.ProductStatus.product_id == product_id,
+            func.upper(models.ProductStatus.status) == "NORMAL",
+        )
+    )
+    if normal:
+        return normal
+
+    normal = models.ProductStatus(
+        product_id=product_id,
+        status="NORMAL",
+        status_description="Reference normal product condition",
+    )
+    db.add(normal)
+    _commit_or_raise(db, "Unable to create normal reference status")
+    db.refresh(normal)
+    return normal
 
 
 @router.get("/dashboard")
@@ -417,6 +447,82 @@ def upload_scan_image(file: UploadFile = File(...)):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return api_response(True, "Scan image uploaded", {"image_path": path})
+
+
+@router.get("/products/{product_id}/normal-reference")
+def get_normal_reference(product_id: str, db: Session = Depends(get_db)):
+    normal = _ensure_normal_status(db, product_id)
+    images = db.scalars(
+        select(models.ProductStatusImage)
+        .where(models.ProductStatusImage.product_status_id == normal.id)
+        .order_by(models.ProductStatusImage.sort_order.asc())
+    ).all()
+    return api_response(
+        True,
+        "Normal reference",
+        {
+            "status_id": normal.id,
+            "status": normal.status,
+            "status_description": normal.status_description,
+            "images": [{"id": i.id, "image_path": i.image_path, "sort_order": i.sort_order} for i in images],
+        },
+    )
+
+
+@router.put("/products/{product_id}/normal-reference")
+def update_normal_reference(product_id: str, payload: NormalReferenceIn, db: Session = Depends(get_db)):
+    normal = _ensure_normal_status(db, product_id)
+    normal.status_description = payload.status_description
+    db.add(normal)
+    _commit_or_raise(db, "Unable to update normal reference")
+    return api_response(True, "Normal reference updated", {"status_id": normal.id})
+
+
+@router.post("/products/{product_id}/normal-reference/images", status_code=201)
+def upload_normal_reference_image(product_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    normal = _ensure_normal_status(db, product_id)
+    try:
+        crud.ensure_status_image_capacity(db, normal.id)
+        path = storage.store_upload(file, f"status_images/{normal.id}")
+        order = crud.next_sort_order(db, normal.id)
+        item = models.ProductStatusImage(product_status_id=normal.id, image_path=path, sort_order=order)
+        db.add(item)
+        _commit_or_raise(db, "Unable to save normal reference image")
+    except crud.ValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return api_response(
+        True,
+        "Normal reference image uploaded",
+        {"id": item.id, "image_path": item.image_path, "sort_order": item.sort_order},
+    )
+
+
+@router.delete("/products/{product_id}/normal-reference/images/{image_id}")
+def delete_normal_reference_image(product_id: str, image_id: str, db: Session = Depends(get_db)):
+    normal = _ensure_normal_status(db, product_id)
+    item = db.get(models.ProductStatusImage, image_id)
+    if not item or item.product_status_id != normal.id:
+        raise HTTPException(status_code=404, detail="Normal reference image not found")
+
+    path = item.image_path
+    db.delete(item)
+    db.flush()
+
+    images = db.scalars(
+        select(models.ProductStatusImage)
+        .where(models.ProductStatusImage.product_status_id == normal.id)
+        .order_by(models.ProductStatusImage.sort_order.asc())
+    ).all()
+    for idx, image in enumerate(images, start=1):
+        image.sort_order = idx
+        db.add(image)
+
+    _commit_or_raise(db, "Unable to delete normal reference image")
+    storage.delete_file(path)
+    return api_response(True, "Normal reference image deleted", None)
 
 
 @router.get("/categories")

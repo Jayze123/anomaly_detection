@@ -1,4 +1,5 @@
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
@@ -13,7 +14,6 @@ from app.api import admin, auth, user
 from app.api.deps import api_response
 from app.core.config import get_settings
 from app.core.logging import configure_logging
-from app.db.base import Base
 from app.db.seed import seed
 from app.db.session import SessionLocal, engine
 from ui.app_ui import register_ui
@@ -21,7 +21,14 @@ from ui.app_ui import register_ui
 configure_logging()
 settings = get_settings()
 
-api_app = FastAPI(title="Anomaly Inspection", version="0.1.0")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    with SessionLocal() as db:
+        seed(db)
+    yield
+
+
+api_app = FastAPI(title="Anomaly Detection", version="0.1.0", lifespan=lifespan)
 api_app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -30,9 +37,9 @@ api_app.add_middleware(
     allow_headers=["*"],
 )
 
-api_app.include_router(auth.router)
-api_app.include_router(admin.router)
-api_app.include_router(user.router)
+api_app.include_router(auth.router, prefix="/api")
+api_app.include_router(admin.router, prefix="/api")
+api_app.include_router(user.router, prefix="/api")
 
 Path(settings.storage_root).mkdir(parents=True, exist_ok=True)
 api_app.mount("/data", StaticFiles(directory=settings.storage_root), name="data")
@@ -48,16 +55,13 @@ async def validation_exception_handler(_, exc: RequestValidationError):
     return JSONResponse(status_code=422, content=api_response(False, "Validation failed", exc.errors()))
 
 
-@api_app.on_event("startup")
-def on_startup() -> None:
-    Base.metadata.create_all(bind=engine)
-    with SessionLocal() as db:
-        seed(db)
-
-
 register_ui(api_app)
 
 
 if __name__ in {"__main__", "app.main"}:
-    ui.run_with(api_app, storage_secret=settings.jwt_secret, title="Anomaly Inspection")
+    ui.run_with(
+        api_app,
+        storage_secret=settings.jwt_secret,
+        title="Anomaly Detection",
+    )
     uvicorn.run(api_app, host="0.0.0.0", port=settings.app_port)

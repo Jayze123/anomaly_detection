@@ -3,9 +3,9 @@ services:
     image: postgres:16
     container_name: anomaly_pg
     environment:
-      POSTGRES_DB: anomaly_inspection
+      POSTGRES_DB: anomaly_detection
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: Yange@junior1
     ports:
       - "5432:5432"
     volumes:

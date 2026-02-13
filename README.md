@@ -1,4 +1,4 @@
-# Anomaly Inspection (FastAPI + NiceGUI + PostgreSQL)
+# Anomaly Detection (FastAPI + NiceGUI + PostgreSQL)
 
 End-to-end visual inspection demo system with:
 - JWT auth (`ADMIN` and `USER` RBAC)
@@ -11,7 +11,7 @@ End-to-end visual inspection demo system with:
 ## 1. Project Tree
 
 ```text
-anomaly_inspection/
+anomaly_detection/
   app/
     main.py
     core/
@@ -65,7 +65,7 @@ anomaly_inspection/
 - Python 3.11+
 
 ### Steps
-1. `cd anomaly_inspection`
+1. `cd anomaly_detection`
 2. `cp .env.example .env`
 3. `docker compose up -d db`
 4. `python -m venv .venv && source .venv/bin/activate`
@@ -152,7 +152,7 @@ RBAC UI guard:
 
 ## 7. Storage
 
-- Root: `STORAGE_ROOT` (default `/data`)
+- Root: `STORAGE_ROOT` (default `./data`)
 - Product status images: `/data/status_images/<status_id>/<uuid>.(jpg|png)`
 - Scan images: `/data/scan_images/...`
 - Upload validation:
@@ -162,7 +162,7 @@ RBAC UI guard:
 
 ## 8. Run Tests
 
-From `anomaly_inspection/`:
+From `anomaly_detection/`:
 
 ```bash
 pytest
