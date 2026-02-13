@@ -60,4 +60,4 @@ register_ui(api_app)
 
 if __name__ in {"__main__", "app.main"}:
     ui.run_with(api_app, storage_secret=settings.jwt_secret, title="Anomaly Inspection")
-    uvicorn.run(api_app, host="0.0.0.0", port=8080)
+    uvicorn.run(api_app, host="0.0.0.0", port=settings.app_port)

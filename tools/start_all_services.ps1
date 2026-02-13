@@ -41,6 +41,16 @@ function Test-ProcessCommandContains {
   return ($procs.Count -gt 0)
 }
 
+function Get-FreePort {
+  param([int[]]$Candidates)
+  foreach ($p in $Candidates) {
+    if (-not (Test-PortListening -Port $p)) {
+      return $p
+    }
+  }
+  return $null
+}
+
 if ($indexDir) {
   Set-Location $indexDir
 
@@ -51,16 +61,26 @@ if ($indexDir) {
   python -m pip install -e .
 
   if (-not (Test-ProcessCommandContains "python -m app.main")) {
+    $targetPort = 8080
+    $owners8080 = Get-PortOwners -Port 8080
+    if ($owners8080.Count -gt 0) {
+      $free = Get-FreePort -Candidates @(8081, 8082, 8083)
+      if ($free -ne $null) {
+        $targetPort = $free
+      } else {
+        Write-Host "Warning: no free app port found in 8080-8083."
+      }
+    }
     Start-Process -FilePath powershell -ArgumentList @(
       "-NoProfile",
       "-ExecutionPolicy", "Bypass",
-      "-Command", "cd `"$indexDir`"; python -m app.main"
+      "-Command", "cd `"$indexDir`"; `$env:APP_PORT=`"$targetPort`"; python -m app.main"
     )
     Start-Sleep -Seconds 2
     if (-not (Test-ProcessCommandContains "python -m app.main")) {
-      $owners = Get-PortOwners -Port 8080
+      $owners = Get-PortOwners -Port $targetPort
       if ($owners.Count -gt 0) {
-        Write-Host "Warning: app service did not start. Port 8080 is in use by: $($owners -join ', ')"
+        Write-Host "Warning: app service did not start. Port $targetPort is in use by: $($owners -join ', ')"
       } else {
         Write-Host "Warning: app service did not start. Check startup logs in the new PowerShell window."
       }
@@ -98,4 +118,4 @@ if (-not (Test-ProcessCommandContains "python tools/auto_commit.py")) {
 }
 
 Write-Host "Services started."
-Write-Host "App URL: http://127.0.0.1:8080 (or http://127.0.0.1:8000 fallback mode)"
+Write-Host "App URL: check 8080 first, then 8081-8083 fallback (or 8000 in legacy fallback mode)"
