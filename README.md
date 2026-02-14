@@ -8,6 +8,11 @@ End-to-end visual inspection demo system with:
 - Image storage under `/data/...`
 - Pytest coverage for auth, RBAC, image-limit, scan flow
 
+## Dissertation Documentation
+
+For MSc dissertation write-up, use:
+- `docs/MSc_Dissertation_Project_Documentation.md`
+
 ## 1. Project Tree
 
 ```text
