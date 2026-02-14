@@ -29,6 +29,7 @@ class UserIn(BaseModel):
     email: EmailStr
     full_name: Annotated[str, StringConstraints(min_length=2, max_length=255)]
     role: str = Field(pattern="^(ADMIN|USER)$")
+    user_role: str | None = Field(default=None, pattern="^(admin|staff)$")
     is_active: bool = True
     password: Annotated[str, StringConstraints(min_length=8, max_length=128)] | None = None
 
@@ -184,6 +185,7 @@ def list_users(db: Session = Depends(get_db)):
                 "email": u.email,
                 "full_name": u.full_name,
                 "role": u.role,
+                "user_role": u.user_role,
                 "is_active": u.is_active,
                 "factory_id": u.factory_id,
                 "factory_name": factory_name,
@@ -196,13 +198,17 @@ def list_users(db: Session = Depends(get_db)):
 @router.post("/users", status_code=201)
 def create_user(payload: UserIn, db: Session = Depends(get_db)):
     pwd = payload.password or secrets.token_urlsafe(10)
+    effective_role = models.RoleEnum.ADMIN.value if (payload.user_role == models.UserRoleEnum.ADMIN.value) else payload.role
+    if payload.user_role == models.UserRoleEnum.STAFF.value:
+        effective_role = models.RoleEnum.USER.value
     user = crud.create_user(
         db,
         factory_id=payload.factory_id,
         email=payload.email,
         full_name=payload.full_name,
         password=pwd,
-        role=payload.role,
+        role=effective_role,
+        user_role=payload.user_role,
         is_active=payload.is_active,
     )
     _commit_or_raise(db, "Email already exists or factory is invalid")
@@ -214,8 +220,14 @@ def update_user(user_id: str, payload: UserIn, db: Session = Depends(get_db)):
     user = db.get(models.User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    for field in ["factory_id", "email", "full_name", "role", "is_active"]:
+    for field in ["factory_id", "email", "full_name", "is_active"]:
         setattr(user, field, getattr(payload, field))
+    if payload.user_role in {models.UserRoleEnum.ADMIN.value, models.UserRoleEnum.STAFF.value}:
+        user.user_role = payload.user_role
+        user.role = models.RoleEnum.ADMIN.value if payload.user_role == models.UserRoleEnum.ADMIN.value else models.RoleEnum.USER.value
+    else:
+        user.role = payload.role
+        user.user_role = models.UserRoleEnum.ADMIN.value if payload.role == models.RoleEnum.ADMIN.value else models.UserRoleEnum.STAFF.value
     if payload.password:
         crud.reset_password(db, user, payload.password)
     db.add(user)

@@ -29,14 +29,19 @@ def create_user(
     full_name: str,
     password: str,
     role: str,
+    user_role: str | None = None,
     is_active: bool = True,
 ) -> models.User:
+    normalized_user_role = (user_role or "").strip().lower()
+    if normalized_user_role not in {models.UserRoleEnum.ADMIN.value, models.UserRoleEnum.STAFF.value}:
+        normalized_user_role = models.UserRoleEnum.ADMIN.value if role == models.RoleEnum.ADMIN.value else models.UserRoleEnum.STAFF.value
     user = models.User(
         factory_id=factory_id,
         email=email.lower().strip(),
         full_name=full_name,
         password_hash=hash_password(password),
         role=role,
+        user_role=normalized_user_role,
         is_active=is_active,
     )
     db.add(user)

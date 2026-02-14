@@ -29,6 +29,11 @@ class RoleEnum(str, Enum):
     USER = "USER"
 
 
+class UserRoleEnum(str, Enum):
+    ADMIN = "admin"
+    STAFF = "staff"
+
+
 class Factory(Base):
     __tablename__ = "factories"
 
@@ -51,6 +56,7 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(10), nullable=False)
+    user_role: Mapped[str] = mapped_column(String(10), nullable=False, default=UserRoleEnum.STAFF.value, server_default=UserRoleEnum.STAFF.value)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(

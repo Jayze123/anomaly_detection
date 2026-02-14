@@ -22,6 +22,8 @@ def register_admin_routes() -> None:
     @ui.page("/admin/dashboard")
     def admin_dashboard():
         user = require_ui_role("ADMIN")
+        if not user:
+            return
         navbar(user, "Dashboard")
         admin_side_nav()
         with SessionLocal() as db:
@@ -100,6 +102,8 @@ def register_admin_routes() -> None:
     @ui.page("/admin/factories")
     def admin_factories():
         user = require_ui_role("ADMIN")
+        if not user:
+            return
         navbar(user, "Factories")
         admin_side_nav()
 
@@ -185,6 +189,8 @@ def register_admin_routes() -> None:
     @ui.page("/admin/users")
     def admin_users():
         user = require_ui_role("ADMIN")
+        if not user:
+            return
         navbar(user, "Users")
         admin_side_nav()
 
@@ -202,7 +208,11 @@ def register_admin_routes() -> None:
                     full_name = ui.input("Full Name", value=u.full_name if u else "")
                     factory_map = {f.name: f.id for f in factories}
                     factory = ui.select(factory_map, value=(u.factory_id if u else next(iter(factory_map.values()), None)), label="Factory")
-                    role = ui.select(["ADMIN", "USER"], value=u.role if u else "USER", label="Role")
+                    user_role = ui.select(
+                        {"admin": "admin", "staff": "staff"},
+                        value=(u.user_role if u and u.user_role else "staff"),
+                        label="User Role",
+                    )
                     active = ui.switch("Active", value=u.is_active if u else True)
                     password = ui.input("Password (optional)", password=True)
 
@@ -212,7 +222,8 @@ def register_admin_routes() -> None:
                             target.email = email.value.strip().lower()
                             target.full_name = full_name.value
                             target.factory_id = factory.value
-                            target.role = role.value
+                            target.user_role = user_role.value
+                            target.role = "ADMIN" if user_role.value == "admin" else "USER"
                             target.is_active = active.value
                             if not user_id:
                                 target.password_hash = hash_password(password.value or "temp12345")
@@ -258,7 +269,7 @@ def register_admin_routes() -> None:
                         "id": u.id,
                         "email": u.email,
                         "full_name": u.full_name,
-                        "role": u.role,
+                        "role": u.user_role,
                         "factory": factory_name,
                         "active": "Yes" if u.is_active else "No",
                     }
@@ -270,7 +281,7 @@ def register_admin_routes() -> None:
                         columns=[
                             {"name": "email", "label": "Email", "field": "email", "sortable": True},
                             {"name": "full_name", "label": "Name", "field": "full_name", "sortable": True},
-                            {"name": "role", "label": "Role", "field": "role", "sortable": True},
+                            {"name": "role", "label": "User Role", "field": "role", "sortable": True},
                             {"name": "factory", "label": "Factory", "field": "factory", "sortable": True},
                             {"name": "active", "label": "Active", "field": "active", "sortable": True},
                             {"name": "actions", "label": "Actions", "field": "actions"},
@@ -299,6 +310,8 @@ def register_admin_routes() -> None:
     @ui.page("/admin/products")
     def admin_products():
         user = require_ui_role("ADMIN")
+        if not user:
+            return
         navbar(user, "Products")
         admin_side_nav()
 
@@ -426,6 +439,8 @@ def register_admin_routes() -> None:
     @ui.page("/admin/products/new")
     def admin_product_new():
         user = require_ui_role("ADMIN")
+        if not user:
+            return
         navbar(user, "Add Product")
         admin_side_nav()
 
@@ -538,6 +553,8 @@ def register_admin_routes() -> None:
     @ui.page("/admin/products/{product_id}")
     def admin_product_detail(product_id: str):
         user = require_ui_role("ADMIN")
+        if not user:
+            return
         navbar(user, "Product Detail")
         admin_side_nav()
 

@@ -42,6 +42,7 @@ def seed(db):
             full_name="System Admin",
             password="admin123",
             role=models.RoleEnum.ADMIN.value,
+            user_role=models.UserRoleEnum.ADMIN.value,
             is_active=True,
         )
 
@@ -54,6 +55,7 @@ def seed(db):
             full_name="Line Operator",
             password="user123",
             role=models.RoleEnum.USER.value,
+            user_role=models.UserRoleEnum.STAFF.value,
             is_active=True,
         )
 

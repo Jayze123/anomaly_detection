@@ -10,3 +10,4 @@ def test_login_and_me(client):
     data = me.json()["data"]
     assert data["email"] == "admin@local"
     assert data["role"] == "ADMIN"
+    assert data["user_role"] == "admin"

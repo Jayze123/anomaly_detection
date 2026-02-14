@@ -55,6 +55,16 @@ The implementation is split across:
 - Media storage: local filesystem (`/data` or configured storage root)
 - Auth/RBAC: JWT and role-restricted routes (`ADMIN`, `USER`)
 
+## 3.3 Authentication and UI Routing Model
+- Public landing page (`/`) provides two role-entry paths:
+  - `Product Scan` -> `/login?next=/user/scan`
+  - `Admin Login` -> `/login?next=/admin/dashboard`
+- Login returns JWT session state in UI storage and enforces role-aware redirect:
+  - `user_role=admin` -> admin module
+  - `user_role=staff` -> user scan module
+- Route guards in UI prevent cross-role navigation and redirect unauthorized access to login.
+- API RBAC remains enforced server-side through role checks, independent of UI routing.
+
 ## 3.2 Research/Inference Layer
 - Batch and API-style experimentation: `src/pipeline.py`, `src/api.py`
 - Data source: MVTec-AD style structure under `data/`
@@ -123,6 +133,15 @@ All experiment behavior is set in `configs/base.yaml`, including:
 - RPM table and policy,
 - uncertainty rules.
 
+## 5.3 Data Model Evolution for Deployment
+- The `users` table includes:
+  - `role` (`ADMIN|USER`) for API RBAC compatibility
+  - `user_role` (`admin|staff`) for business-facing module routing
+- Alembic revision `0002_add_user_role` adds and backfills `user_role` from legacy `role`.
+- Seed data maps:
+  - `admin@local` -> `user_role=admin`
+  - `user@local` -> `user_role=staff`
+
 ## 6. Output Specification (Per Image)
 Each processed image yields:
 - `image_id`
@@ -166,6 +185,7 @@ Recommended evaluation protocol:
 - VLM fallback heuristic is deterministic but less expressive than full multimodal LLM inference.
 - Domain shift (factory lighting/camera changes) can affect score calibration.
 - RPM quality depends on correctness of curated S/O/D profiles.
+- UI-state/session mismatch may affect operator flow if browser cache is stale; mitigation includes explicit session reset on login/logout and strict role checks.
 
 ## 9. Ethical and Safety Considerations
 - Human-in-the-loop is enforced for low-confidence or ambiguous outputs.
@@ -182,6 +202,12 @@ pip install -e .
 alembic -c app/db/migrations/alembic.ini upgrade head
 python -m app.main
 ```
+
+After startup:
+- Open `http://localhost:8080/`
+- Use:
+  - Staff login: `user@local / user123`
+  - Admin login: `admin@local / admin123`
 
 ## 10.2 Research Pipeline
 ```bash
